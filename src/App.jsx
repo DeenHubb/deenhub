@@ -1458,33 +1458,124 @@ function ScholarsPage({ rtl, theme }) {
 }
 
 /* ---------------- DUAS (real, cited, embedded) ---------------- */
+const MOOD_MAP = [
+  { id: "anxious", label: "Anxious or worried", labelAr: "قلق أو توتر", refs: [[94, 5], [94, 6], [2, 286]], duaIds: ["dua-lahawla"] },
+  { id: "grateful", label: "Grateful", labelAr: "شكر وامتنان", refs: [[14, 7]], duaIds: ["dua-alhamdulillah"] },
+  { id: "grieving", label: "Grieving a loss", labelAr: "حزن وفقد", refs: [[2, 155], [2, 156], [2, 157]], duaIds: [] },
+  { id: "guilt", label: "Feeling far from Allah", labelAr: "الشعور بالبعد عن الله", refs: [[39, 53]], duaIds: ["dua-astaghfirullah"] },
+  { id: "hardship", label: "Facing hardship", labelAr: "مواجهة صعوبة", refs: [[65, 2], [65, 3]], duaIds: ["dua-lahawla"] },
+  { id: "guidance", label: "Seeking guidance", labelAr: "طلب الهداية", refs: [[1, 6]], duaIds: [] },
+];
+
 function DuasPage({ rtl, theme, actions }) {
+  const [tab, setTab] = useState("category");
+  const [mood, setMood] = useState(null);
+
+  const moodResult = useMemo(() => {
+    if (!mood) return null;
+    const m = MOOD_MAP.find((x) => x.id === mood);
+    if (!m) return null;
+    const ayahs = m.refs.map(([s, a]) => {
+      const surahMeta = SURAH_LIST.find((x) => x[2] === s);
+      const ayahData = (QURAN_DATA[String(s)] || []).find((x) => x[0] === a);
+      if (!ayahData) return null;
+      return { surahNum: s, ayahNum: a, surahName: surahMeta?.[1], ar: ayahData[1], en: ayahData[2] };
+    }).filter(Boolean);
+    const duas = m.duaIds.map((id) => DUA_LIST.find((d) => d.id === id)).filter(Boolean);
+    return { ayahs, duas };
+  }, [mood]);
+
   return (
     <div className="pt-8">
       <SectionTitle eyebrow={rtl ? "الأدعية" : "Duas & Adhkar"} title={rtl ? "الأدعية والأذكار" : "Duas & Adhkar"} sub={rtl ? "أدعية قصيرة موثقة المصدر من القرآن والسنة." : "Short, well-established duas with real, cited sources."} />
-      <div className="grid gap-3">
-        {DUA_LIST.map((dua) => (
-          <Card key={dua.id} className="p-5">
-            <div className="flex justify-between items-start mb-3">
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: COLORS.lightGreen, color: COLORS.green }}>{dua.category}</span>
-              <Badge tone="verified" />
-            </div>
-            <p className="text-2xl text-right leading-loose" dir="rtl" style={{ fontFamily: "'Amiri Quran','Amiri',serif", color: "var(--heading)" }}>{dua.ar}</p>
-            <p className="text-sm opacity-60 mt-1 italic">{dua.translit}</p>
-            <p className="text-sm opacity-80 mt-2">{dua.en}</p>
-            <p className="text-xs mt-2 font-bold" style={{ color: COLORS.gold }}>{dua.ref}</p>
-            <div className="flex gap-4 mt-4 opacity-80">
-              <IconBtn icon={Copy} onClick={() => actions.copyText(`${dua.ar}\n${dua.translit}\n${dua.en}\n${dua.ref}`)} label="Copy" />
-              <IconBtn icon={Heart} active={actions.isBookmarked(dua.id)} onClick={() => actions.toggleBookmark({ id: dua.id, type: "Dua", title: dua.translit, sub: dua.en })} label="Favorite" />
-              <IconBtn icon={Share2} onClick={() => actions.shareText(`${dua.en}\n${dua.ref}`, dua.translit)} label="Share" />
-            </div>
-          </Card>
-        ))}
+
+      <div className="flex items-center gap-1 p-1 rounded-full mb-6 max-w-md" style={{ background: COLORS.lightGreen }}>
+        <button onClick={() => setTab("category")} className="flex-1 px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: tab === "category" ? "#fff" : "transparent", color: COLORS.darkGreen }}>{rtl ? "حسب الفئة" : "By Category"}</button>
+        <button onClick={() => setTab("mood")} className="flex-1 px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: tab === "mood" ? "#fff" : "transparent", color: COLORS.darkGreen }}>{rtl ? "ابحث بحسب شعورك" : "Find Comfort by Feeling"}</button>
       </div>
-      <Card className="p-4 mt-4 text-sm flex items-start gap-2">
-        <Info size={15} className="mt-0.5 shrink-0 text-amber-600" />
-        <span>{rtl ? "المزيد من الأدعية الأطول (مثل أذكار الصباح والمساء الكاملة) سيُضاف بعد مراجعة دقيقة للنصوص لضمان صحتها الكاملة." : "Longer duas (like the full morning/evening adhkar) will be added after careful text verification to ensure full accuracy."}</span>
-      </Card>
+
+      {tab === "category" && (
+        <>
+          <div className="grid gap-3">
+            {DUA_LIST.map((dua) => (
+              <Card key={dua.id} className="p-5">
+                <div className="flex justify-between items-start mb-3">
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: COLORS.lightGreen, color: COLORS.green }}>{dua.category}</span>
+                  <Badge tone="verified" />
+                </div>
+                <p className="text-2xl text-right leading-loose" dir="rtl" style={{ fontFamily: "'Amiri Quran','Amiri',serif", color: "var(--heading)" }}>{dua.ar}</p>
+                <p className="text-sm opacity-60 mt-1 italic">{dua.translit}</p>
+                <p className="text-sm opacity-80 mt-2">{dua.en}</p>
+                <p className="text-xs mt-2 font-bold" style={{ color: COLORS.gold }}>{dua.ref}</p>
+                <div className="flex gap-4 mt-4 opacity-80">
+                  <IconBtn icon={Copy} onClick={() => actions.copyText(`${dua.ar}\n${dua.translit}\n${dua.en}\n${dua.ref}`)} label="Copy" />
+                  <IconBtn icon={Heart} active={actions.isBookmarked(dua.id)} onClick={() => actions.toggleBookmark({ id: dua.id, type: "Dua", title: dua.translit, sub: dua.en })} label="Favorite" />
+                  <IconBtn icon={Share2} onClick={() => actions.shareText(`${dua.en}\n${dua.ref}`, dua.translit)} label="Share" />
+                </div>
+              </Card>
+            ))}
+          </div>
+          <Card className="p-4 mt-4 text-sm flex items-start gap-2">
+            <Info size={15} className="mt-0.5 shrink-0 text-amber-600" />
+            <span>{rtl ? "المزيد من الأدعية الأطول (مثل أذكار الصباح والمساء الكاملة) سيُضاف بعد مراجعة دقيقة للنصوص لضمان صحتها الكاملة." : "Longer duas (like the full morning/evening adhkar) will be added after careful text verification to ensure full accuracy."}</span>
+          </Card>
+        </>
+      )}
+
+      {tab === "mood" && (
+        <>
+          <p className="text-sm opacity-70 mb-4">{rtl ? "اختر ما يقرب من شعورك الآن، وستظهر آيات وأدعية حقيقية (من نفس النصوص الموثقة في هذا التطبيق) كثيرًا ما يجد فيها الناس تسلية." : "Pick what's closest to how you feel right now — you'll see real verses and duas (from the same verified text already in this app) that many find comforting."}</p>
+          <div className="flex flex-wrap gap-2 mb-6">
+            {MOOD_MAP.map((m) => (
+              <button key={m.id} onClick={() => setMood(m.id)} className="text-sm font-bold px-4 py-2 rounded-full border transition-all" style={{ background: mood === m.id ? COLORS.green : "transparent", color: mood === m.id ? "#fff" : "inherit", borderColor: COLORS.green + "40" }}>
+                {rtl ? m.labelAr : m.label}
+              </button>
+            ))}
+          </div>
+
+          {!mood && <p className="text-sm opacity-50">{rtl ? "اختر شعورًا أعلاه للبدء." : "Choose a feeling above to begin."}</p>}
+
+          {moodResult && (
+            <div className="space-y-3">
+              {moodResult.ayahs.map((a, i) => {
+                const cite = `Quran ${a.surahNum}:${a.ayahNum}`;
+                const bmId = `mood-${a.surahNum}-${a.ayahNum}`;
+                return (
+                  <Card key={i} className="p-5">
+                    <div className="flex justify-between items-start mb-3">
+                      <Badge tone="verified" />
+                      <div className="flex gap-3 opacity-70">
+                        <IconBtn icon={Copy} onClick={() => actions.copyText(`${a.ar}\n${a.en}\n(${cite})`)} label="Copy" />
+                        <IconBtn icon={Bookmark} active={actions.isBookmarked(bmId)} onClick={() => actions.toggleBookmark({ id: bmId, type: "Quran", title: `${a.surahName}, Ayah ${a.ayahNum}`, sub: a.en.slice(0, 50) + "…" })} label="Bookmark" />
+                        <IconBtn icon={Share2} onClick={() => actions.shareText(`${a.en}\n(${cite})`, cite)} label="Share" />
+                      </div>
+                    </div>
+                    <p className="text-xl leading-loose text-right" dir="rtl" style={{ fontFamily: "'Amiri Quran','Amiri',serif", color: "var(--heading)" }}>{a.ar}</p>
+                    <p className="text-sm opacity-80 mt-3">{a.en}</p>
+                    <p className="text-xs mt-2 font-bold" style={{ color: COLORS.gold }}>{cite} · {a.surahName}</p>
+                  </Card>
+                );
+              })}
+              {moodResult.duas.map((dua) => (
+                <Card key={dua.id} className="p-5">
+                  <div className="flex justify-between items-start mb-3">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: COLORS.lightGreen, color: COLORS.green }}>{dua.category}</span>
+                    <Badge tone="verified" />
+                  </div>
+                  <p className="text-xl text-right leading-loose" dir="rtl" style={{ fontFamily: "'Amiri Quran','Amiri',serif", color: "var(--heading)" }}>{dua.ar}</p>
+                  <p className="text-sm opacity-60 mt-1 italic">{dua.translit}</p>
+                  <p className="text-sm opacity-80 mt-2">{dua.en}</p>
+                  <p className="text-xs mt-2 font-bold" style={{ color: COLORS.gold }}>{dua.ref}</p>
+                </Card>
+              ))}
+              <Card className="p-4 text-sm flex items-start gap-2">
+                <Info size={15} className="mt-0.5 shrink-0 text-amber-600" />
+                <span>{rtl ? "هذه مجموعة تحريرية من آيات حقيقية، وليست تفسيرًا رسميًا أو فتوى. لفهم أعمق استشر عالمًا مؤهلاً." : "This is an editorial grouping of real, cited verses — not an official tafsir or fatwa. For deeper understanding, consult a qualified scholar."}</span>
+              </Card>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -1684,7 +1775,7 @@ function ToolsPage({ rtl, theme, tasbih, setTasbih, zakatWealth, setZakatWealth,
         <p className="text-xs opacity-40 mt-3">{rtl ? "البيانات من OpenStreetMap عبر Overpass API." : "Data sourced live from OpenStreetMap via the Overpass API."}</p>
       </Card>
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid md:grid-cols-2 gap-4 mb-4">
         <Card className="p-5">
           <div className="flex items-center gap-2 mb-3"><Calculator size={18} color={COLORS.green} /><h3 className="font-bold">{rtl ? "حاسبة الزكاة" : "Zakat Calculator"}</h3></div>
           <label className="text-xs opacity-60">{rtl ? "إجمالي المدخرات (بعملتك)" : "Total zakatable wealth"}</label>
@@ -1700,15 +1791,182 @@ function ToolsPage({ rtl, theme, tasbih, setTasbih, zakatWealth, setZakatWealth,
           <p className="text-xs opacity-50 mt-2">{rtl ? "تحقق من بلوغ النصاب وحولان الحول قبل الاعتماد على هذا الحساب." : "Confirm nisab threshold and hawl (one lunar year) before relying on this figure."}</p>
         </Card>
 
-        <Card className="p-5 flex flex-col items-center justify-center text-center">
-          <h3 className="font-bold mb-2">{rtl ? "عداد التسبيح" : "Tasbih Counter"}</h3>
-          <div className="text-5xl font-extrabold my-4" style={{ color: "var(--heading)" }}>{tasbih}</div>
-          <div className="flex gap-3">
-            <button onClick={() => setTasbih(tasbih + 1)} className="px-6 py-3 rounded-full text-white font-bold" style={{ background: COLORS.green }}>{rtl ? "عدّ" : "Count"}</button>
-            <button onClick={() => setTasbih(0)} className="px-4 py-3 rounded-full border font-bold" style={{ borderColor: COLORS.green + "40" }}>{rtl ? "إعادة" : "Reset"}</button>
-          </div>
-        </Card>
+        <DigitalMisbaha rtl={rtl} />
       </div>
+
+      <RecitationPractice rtl={rtl} actions={actions} />
     </div>
+  );
+}
+
+const DHIKR_CYCLE = [
+  { ar: "سُبْحَانَ اللَّهِ", translit: "SubhanAllah", target: 33 },
+  { ar: "الْحَمْدُ لِلَّهِ", translit: "Alhamdulillah", target: 33 },
+  { ar: "اللَّهُ أَكْبَرُ", translit: "Allahu Akbar", target: 34 },
+];
+
+function DigitalMisbaha({ rtl }) {
+  const [phraseIdx, setPhraseIdx] = useState(0);
+  const [count, setCount] = useState(0);
+  const [totalDone, setTotalDone] = useState(0);
+  const phrase = DHIKR_CYCLE[phraseIdx];
+
+  const tap = () => {
+    if (navigator.vibrate) navigator.vibrate(8);
+    const next = count + 1;
+    setTotalDone((t) => t + 1);
+    if (next >= phrase.target) {
+      if (phraseIdx < DHIKR_CYCLE.length - 1) {
+        setPhraseIdx(phraseIdx + 1);
+        setCount(0);
+      } else {
+        setCount(next); // hold at completion so the ring shows full
+      }
+    } else {
+      setCount(next);
+    }
+  };
+
+  const reset = () => { setPhraseIdx(0); setCount(0); setTotalDone(0); };
+  const complete = phraseIdx === DHIKR_CYCLE.length - 1 && count >= phrase.target;
+  const pct = Math.min(1, count / phrase.target);
+  const R = 54, C = 2 * Math.PI * R;
+
+  return (
+    <Card className="p-5 flex flex-col items-center justify-center text-center">
+      <h3 className="font-bold mb-1">{rtl ? "المسبحة الرقمية" : "Digital Misbaha"}</h3>
+      <p className="text-xs opacity-50 mb-3">{rtl ? "دورة التسبيح بعد الصلاة (٣٣ + ٣٣ + ٣٤)" : "The post-prayer dhikr cycle (33 + 33 + 34)"}</p>
+      <button onClick={tap} className="relative w-36 h-36 flex items-center justify-center" style={{ cursor: "pointer" }}>
+        <svg width="144" height="144" viewBox="0 0 144 144" className="absolute inset-0 -rotate-90">
+          <circle cx="72" cy="72" r={R} fill="none" stroke={COLORS.lightGreen} strokeWidth="10" />
+          <circle cx="72" cy="72" r={R} fill="none" stroke={complete ? COLORS.gold : COLORS.green} strokeWidth="10" strokeLinecap="round"
+            strokeDasharray={C} strokeDashoffset={C * (1 - pct)} style={{ transition: "stroke-dashoffset 0.2s" }} />
+        </svg>
+        <div>
+          <div className="text-3xl font-extrabold" style={{ color: "var(--heading)" }}>{count}<span className="text-base opacity-40">/{phrase.target}</span></div>
+        </div>
+      </button>
+      <p className="text-xl mt-3" dir="rtl" style={{ fontFamily: "'Amiri Quran','Amiri',serif", color: "var(--heading)" }}>{phrase.ar}</p>
+      <p className="text-xs opacity-60 italic">{phrase.translit}</p>
+      {complete && <p className="text-xs font-bold mt-2" style={{ color: COLORS.gold }}>{rtl ? "أكملت الدورة! (100)" : "Cycle complete! (100)"}</p>}
+      <div className="flex gap-3 mt-4">
+        <button onClick={tap} className="px-6 py-2.5 rounded-full text-white font-bold text-sm" style={{ background: COLORS.green }}>{rtl ? "عدّ" : "Count"}</button>
+        <button onClick={reset} className="px-4 py-2.5 rounded-full border font-bold text-sm" style={{ borderColor: COLORS.green + "40" }}>{rtl ? "إعادة" : "Reset"}</button>
+      </div>
+      <p className="text-[11px] opacity-40 mt-3">{rtl ? `إجمالي منذ آخر إعادة: ${totalDone}` : `Total taps since last reset: ${totalDone}`}</p>
+    </Card>
+  );
+}
+
+function RecitationPractice({ rtl, actions }) {
+  const [surahNum, setSurahNum] = useState(1);
+  const [ayahNum, setAyahNum] = useState(1);
+  const [recState, setRecState] = useState("idle"); // idle | requesting | recording | recorded | error
+  const [errorMsg, setErrorMsg] = useState(null);
+  const [myRecordingUrl, setMyRecordingUrl] = useState(null);
+  const [playingWhich, setPlayingWhich] = useState(null); // "reciter" | "mine" | null
+  const mediaRecorderRef = useRef(null);
+  const chunksRef = useRef([]);
+  const reciterAudioRef = useRef(null);
+  const myAudioRef = useRef(null);
+
+  const surah = SURAH_LIST.find((s) => s[2] === surahNum);
+  const ayahData = (QURAN_DATA[String(surahNum)] || []).find((a) => a[0] === ayahNum);
+  const globalAyah = surah ? SURAH_OFFSETS[surahNum - 1] + ayahNum : null;
+
+  const startRecording = async () => {
+    setErrorMsg(null);
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
+      setErrorMsg(rtl ? "متصفحك لا يدعم التسجيل الصوتي." : "Your browser doesn't support audio recording.");
+      setRecState("error");
+      return;
+    }
+    setRecState("requesting");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      chunksRef.current = [];
+      mr.ondataavailable = (e) => chunksRef.current.push(e.data);
+      mr.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        setMyRecordingUrl(URL.createObjectURL(blob));
+        setRecState("recorded");
+        stream.getTracks().forEach((t) => t.stop());
+      };
+      mediaRecorderRef.current = mr;
+      mr.start();
+      setRecState("recording");
+    } catch (e) {
+      setErrorMsg(rtl ? "تعذّر الوصول إلى الميكروفون. تحقق من إذن المتصفح." : "Couldn't access the microphone. Check your browser permission.");
+      setRecState("error");
+    }
+  };
+
+  const stopRecording = () => { mediaRecorderRef.current?.stop(); };
+
+  const playReciter = () => {
+    if (!globalAyah || !reciterAudioRef.current) return;
+    if (playingWhich === "reciter") { reciterAudioRef.current.pause(); setPlayingWhich(null); return; }
+    reciterAudioRef.current.src = `https://cdn.islamic.network/quran/audio/128/ar.alafasy/${globalAyah}.mp3`;
+    reciterAudioRef.current.play().catch(() => actions.showToast(rtl ? "تعذر تشغيل الصوت" : "Couldn't play audio"));
+    setPlayingWhich("reciter");
+    reciterAudioRef.current.onended = () => setPlayingWhich(null);
+  };
+
+  const playMine = () => {
+    if (!myRecordingUrl || !myAudioRef.current) return;
+    if (playingWhich === "mine") { myAudioRef.current.pause(); setPlayingWhich(null); return; }
+    myAudioRef.current.play().catch(() => {});
+    setPlayingWhich("mine");
+    myAudioRef.current.onended = () => setPlayingWhich(null);
+  };
+
+  return (
+    <Card className="p-5 mt-4">
+      <audio ref={reciterAudioRef} className="hidden" />
+      <audio ref={myAudioRef} src={myRecordingUrl || undefined} className="hidden" />
+      <div className="flex items-center gap-2 mb-1"><Headphones size={18} color={COLORS.green} /><h3 className="font-bold">{rtl ? "تدرّب على تلاوتك" : "Recitation Practice"}</h3></div>
+      <p className="text-xs opacity-60 mb-4">{rtl ? "سجّل تلاوتك ثم قارنها بصوت القارئ — للمقارنة الشخصية فقط، بلا تقييم تلقائي." : "Record yourself, then compare it to a reciter — for your own comparison, with no automated scoring."}</p>
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        <select value={surahNum} onChange={(e) => { setSurahNum(Number(e.target.value)); setAyahNum(1); setRecState("idle"); setMyRecordingUrl(null); }} className="text-sm px-3 py-2 rounded-lg border bg-transparent" style={{ borderColor: COLORS.green + "30" }}>
+          {SURAH_LIST.map((s) => <option key={s[2]} value={s[2]}>{s[2]}. {s[1]}</option>)}
+        </select>
+        <select value={ayahNum} onChange={(e) => { setAyahNum(Number(e.target.value)); setRecState("idle"); setMyRecordingUrl(null); }} className="text-sm px-3 py-2 rounded-lg border bg-transparent" style={{ borderColor: COLORS.green + "30" }}>
+          {surah && Array.from({ length: surah[3] }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{rtl ? `آية ${n}` : `Ayah ${n}`}</option>)}
+        </select>
+      </div>
+
+      {ayahData && (
+        <div className="p-4 rounded-xl mb-4" style={{ background: COLORS.lightGreen }}>
+          <p className="text-2xl leading-loose text-right" dir="rtl" style={{ fontFamily: "'Amiri Quran','Amiri',serif", color: COLORS.darkGreen }}>{ayahData[1]}</p>
+          <p className="text-sm opacity-70 mt-2">{ayahData[2]}</p>
+        </div>
+      )}
+
+      {errorMsg && <p className="text-xs text-amber-600 mb-3">{errorMsg}</p>}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button onClick={playReciter} className="flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-full text-white" style={{ background: COLORS.green }}>
+          {playingWhich === "reciter" ? <Pause size={14} /> : <Play size={14} />} {rtl ? "استمع للقارئ" : "Play Reciter"}
+        </button>
+
+        {recState !== "recording" ? (
+          <button onClick={startRecording} disabled={recState === "requesting"} className="flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-full border" style={{ borderColor: COLORS.green + "40" }}>
+            {recState === "requesting" ? <Loader2 size={14} className="animate-spin" /> : <Headphones size={14} />} {rtl ? "سجّل صوتك" : "Record Myself"}
+          </button>
+        ) : (
+          <button onClick={stopRecording} className="flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-full text-white animate-pulse" style={{ background: "#C0392B" }}>
+            {rtl ? "وقف التسجيل" : "Stop Recording"}
+          </button>
+        )}
+
+        {myRecordingUrl && (
+          <button onClick={playMine} className="flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-full border" style={{ borderColor: COLORS.gold, color: COLORS.gold }}>
+            {playingWhich === "mine" ? <Pause size={14} /> : <Play size={14} />} {rtl ? "استمع لتلاوتي" : "Play My Recording"}
+          </button>
+        )}
+      </div>
+    </Card>
   );
 }
