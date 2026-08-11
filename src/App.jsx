@@ -126,7 +126,7 @@ const RECITERS = [
   { id: "ar.muhammadayyoub", name: "Muhammad Ayyoub", source: "islamic-network" },
   { id: "Yasser_Ad-Dussary_128kbps", name: "Yasser Al-Dosari", source: "everyayah" },
   { id: "Ali_Jaber_64kbps", name: "Ali Jaber", source: "everyayah" },
-  { id: "hazza", name: "Hazza Al-Balushi", source: "surah-only", surahUrlBase: "https://server11.mp3quran.net/hazza/" },
+  { id: "hazza", name: "Hazza Al-Balushi", source: "surah-only", surahUrlBase: "https://server11.mp3quran.net/download/hazza/" },
   { id: "a_binhameed", name: "Ahmad ibn Talib", source: "surah-only", surahUrlBase: "https://server16.mp3quran.net/download/a_binhameed/Rewayat-Hafs-A-n-Assem/" },
 ];
 
