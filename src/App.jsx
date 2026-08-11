@@ -531,8 +531,9 @@ export default function DeenHub() {
         </div>
       </div>
 
-      <footer className="hidden lg:block border-t py-8 text-center text-xs opacity-60" style={{ borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(18,60,44,0.08)" }}>
-        DeenHub — {rtl ? "بوابتك الموثوقة للمعرفة الإسلامية" : "Your trusted gateway to Islamic knowledge"}. {rtl ? "لا يصدر هذا الموقع فتاوى؛ جميع المحتويات الدينية مصدرها موثق." : "This platform does not issue its own fatwas — all religious content displays its original source."}
+      <footer className="border-t py-8 pb-24 lg:pb-8 text-center text-xs opacity-60" style={{ borderColor: dark ? "rgba(255,255,255,0.08)" : "rgba(18,60,44,0.08)" }}>
+        <p>DeenHub — {rtl ? "بوابتك الموثوقة للمعرفة الإسلامية" : "Your trusted gateway to Islamic knowledge"}. {rtl ? "لا يصدر هذا الموقع فتاوى؛ جميع المحتويات الدينية مصدرها موثق." : "This platform does not issue its own fatwas — all religious content displays its original source."}</p>
+        <p className="mt-2 font-semibold">{rtl ? "تم إنشاؤه بواسطة ريان لقيس" : "Made by Rayan Lakkis"}</p>
       </footer>
     </div>
   );
