@@ -324,6 +324,32 @@ export default function DeenHub() {
   const audioRef = useRef(null);
   const rtl = lang === "ar";
 
+  // Continue Reading: remembers the last surah/ayah opened, across visits.
+  const [lastRead, setLastRead] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("deenhub-last-read") || "null"); } catch { return null; }
+  });
+  useEffect(() => {
+    if (lastRead) { try { localStorage.setItem("deenhub-last-read", JSON.stringify(lastRead)); } catch { /* unavailable */ } }
+  }, [lastRead]);
+
+  // Reading streak: counts consecutive days the app was opened.
+  const [streak, setStreak] = useState(0);
+  useEffect(() => {
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const saved = JSON.parse(localStorage.getItem("deenhub-streak") || "null");
+      let next = 1;
+      if (saved?.lastDate) {
+        const diffDays = Math.round((new Date(today) - new Date(saved.lastDate)) / 86400000);
+        if (diffDays === 0) next = saved.streak;
+        else if (diffDays === 1) next = saved.streak + 1;
+        else next = 1;
+      }
+      setStreak(next);
+      localStorage.setItem("deenhub-streak", JSON.stringify({ lastDate: today, streak: next }));
+    } catch { /* storage unavailable */ }
+  }, []);
+
   // The Quran + Hadith text (~2.3MB) loads as a separate chunk in the background,
   // so the app shell (nav, home, tools) paints immediately instead of waiting on it.
   const [quranData, setQuranData] = useState(null);
@@ -384,7 +410,7 @@ export default function DeenHub() {
 
   const doSearch = (q) => { setSearchQuery(q); setQuery(q); setPage("search"); setMenuOpen(false); };
 
-  const actions = { showToast, copyText, shareText, isBookmarked, toggleBookmark, playAyah, playingId, reciter, setReciter, doSearch, goSurah: (n) => { setActiveSurah(n); setPage("quran"); }, setPage };
+  const actions = { showToast, copyText, shareText, isBookmarked, toggleBookmark, playAyah, playingId, reciter, setReciter, doSearch, goSurah: (n) => { setActiveSurah(n); setPage("quran"); }, setPage, setLastRead };
 
   const nav = [
     { id: "home", label: rtl ? "الرئيسية" : "Home" },
@@ -502,7 +528,7 @@ export default function DeenHub() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 pb-24">
-        {page === "home" && <Home_ rtl={rtl} theme={theme} dark={dark} query={query} setQuery={setQuery} actions={actions} quranData={quranData} />}
+        {page === "home" && <Home_ rtl={rtl} theme={theme} dark={dark} query={query} setQuery={setQuery} actions={actions} quranData={quranData} lastRead={lastRead} streak={streak} />}
         {page === "search" && <SearchPage rtl={rtl} theme={theme} initialQuery={searchQuery} actions={actions} quranData={quranData} nawawiHadith={nawawiHadith} />}
         {page === "quran" && <QuranPage rtl={rtl} theme={theme} activeSurah={activeSurah} setActiveSurah={setActiveSurah} actions={actions} quranData={quranData} />}
         {page === "hadith" && <HadithPage rtl={rtl} theme={theme} actions={actions} nawawiHadith={nawawiHadith} />}
@@ -510,7 +536,7 @@ export default function DeenHub() {
         {page === "fiqh" && <FiqhPage rtl={rtl} theme={theme} />}
         {page === "scholars" && <ScholarsPage rtl={rtl} theme={theme} />}
         {page === "duas" && <DuasPage rtl={rtl} theme={theme} actions={actions} quranData={quranData} />}
-        {page === "tools" && <ToolsPage rtl={rtl} theme={theme} tasbih={tasbih} setTasbih={setTasbih} zakatWealth={zakatWealth} setZakatWealth={setZakatWealth} actions={actions} quranData={quranData} />}
+        {page === "tools" && <ToolsPage rtl={rtl} theme={theme} tasbih={tasbih} setTasbih={setTasbih} zakatWealth={zakatWealth} setZakatWealth={setZakatWealth} actions={actions} quranData={quranData} lastRead={lastRead} />}
         {page === "bookmarks" && <BookmarksPage rtl={rtl} theme={theme} bookmarks={bookmarks} actions={actions} />}
       </main>
 
@@ -560,7 +586,7 @@ function AuthModal({ rtl, onClose, onSubmit }) {
 }
 
 /* ---------------- HOME ---------------- */
-function Home_({ rtl, theme, dark, query, setQuery, actions, quranData }) {
+function Home_({ rtl, theme, dark, query, setQuery, actions, quranData, lastRead, streak }) {
   const [showSuggest, setShowSuggest] = useState(false);
   const suggestions = [
     rtl ? "ما الذي ينقض الوضوء؟" : "What breaks wudu?",
@@ -584,8 +610,15 @@ function Home_({ rtl, theme, dark, query, setQuery, actions, quranData }) {
       <section className="relative -mx-4 px-4 pt-14 md:pt-24 pb-14 text-center overflow-hidden rounded-b-[2.5rem]" style={{ background: dark ? "linear-gradient(180deg, #0d1f18, #0B1712)" : `linear-gradient(180deg, ${COLORS.lightGreen} 0%, ${COLORS.cream} 75%)` }}>
         <StarPattern opacity={dark ? 0.05 : 0.07} color={COLORS.green} />
         <div className="relative">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold mb-6" style={{ background: dark ? "rgba(199,169,90,0.15)" : "#fff", color: COLORS.gold, border: `1px solid ${COLORS.gold}55` }}>
-            <Sparkles size={12} /> {rtl ? "بوابة إسلامية واحدة موثوقة" : "One trusted Islamic gateway"}
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold" style={{ background: dark ? "rgba(199,169,90,0.15)" : "#fff", color: COLORS.gold, border: `1px solid ${COLORS.gold}55` }}>
+              <Sparkles size={12} /> {rtl ? "بوابة إسلامية واحدة موثوقة" : "One trusted Islamic gateway"}
+            </div>
+            {streak > 1 && (
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold" style={{ background: dark ? "rgba(30,125,89,0.2)" : COLORS.lightGreen, color: COLORS.green }}>
+                🔥 {rtl ? `${streak} أيام متتالية` : `${streak}-day streak`}
+              </div>
+            )}
           </div>
           <h1 className="text-4xl md:text-6xl font-extrabold leading-[1.1] max-w-3xl mx-auto" style={{ color: "var(--heading)", fontFamily: "'Manrope',sans-serif" }}>
             {rtl ? "كل ما تحتاجه لتعلم الإسلام، في مكان واحد" : "Everything You Need to Learn Islam, In One Place"}
@@ -634,6 +667,23 @@ function Home_({ rtl, theme, dark, query, setQuery, actions, quranData }) {
           </Card>
         ))}
       </section>
+
+      {lastRead && (
+        <Card className="p-5 mt-6 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: COLORS.lightGreen }}>
+              <BookOpen size={18} color={COLORS.green} />
+            </div>
+            <div>
+              <div className="text-xs opacity-50 font-bold uppercase tracking-wide">{rtl ? "استمر في القراءة" : "Continue Reading"}</div>
+              <div className="font-bold text-sm">{lastRead.surahName} {rtl ? "· آية" : "· Ayah"} {lastRead.ayahNum}</div>
+            </div>
+          </div>
+          <button onClick={() => actions.goSurah(lastRead.surahNum)} className="text-xs font-bold px-4 py-2 rounded-full text-white" style={{ background: COLORS.green }}>
+            {rtl ? "افتح" : "Resume"} <ChevronRight size={12} className={`inline ${rtl ? "rotate-180" : ""}`} />
+          </button>
+        </Card>
+      )}
 
       <GoldDivider />
 
@@ -718,7 +768,7 @@ function Home_({ rtl, theme, dark, query, setQuery, actions, quranData }) {
 const hadithBookCache = {};
 async function getHadithBook(slug) {
   if (hadithBookCache[slug]) return hadithBookCache[slug];
-  const res = await fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions/eng-${slug}.min.json`);
+  const res = await fetch(`https://raw.githubusercontent.com/fawazahmed0/hadith-api/1/editions/eng-${slug}.min.json`);
   if (!res.ok) throw new Error("hadith fetch failed");
   const data = await res.json();
   const hadiths = data.hadiths || [];
@@ -875,6 +925,10 @@ function QuranPage({ rtl, theme, activeSurah, setActiveSurah, actions, quranData
   const [fontSize, setFontSize] = useState(28);
   const surah = SURAH_LIST.find((s) => s[2] === activeSurah);
   const filtered = SURAH_LIST.filter((s) => s[1].toLowerCase().includes(filter.toLowerCase()) || s[0].includes(filter));
+
+  useEffect(() => {
+    if (activeSurah && surah) actions.setLastRead({ surahNum: activeSurah, surahName: surah[1], ayahNum: 1 });
+  }, [activeSurah]);
 
   if (activeSurah && surah && !quranData) {
     return (
@@ -1475,7 +1529,7 @@ function BookmarksPage({ rtl, theme, bookmarks, actions }) {
 }
 
 /* ---------------- TOOLS (prayer times by country/city, real qibla math, real mosque finder) ---------------- */
-function ToolsPage({ rtl, theme, tasbih, setTasbih, zakatWealth, setZakatWealth, actions, quranData }) {
+function ToolsPage({ rtl, theme, tasbih, setTasbih, zakatWealth, setZakatWealth, actions, quranData, lastRead }) {
   const zakat = useMemo(() => {
     const w = parseFloat(zakatWealth);
     if (isNaN(w) || w <= 0) return null;
@@ -1663,8 +1717,40 @@ function ToolsPage({ rtl, theme, tasbih, setTasbih, zakatWealth, setZakatWealth,
         <DigitalMisbaha rtl={rtl} />
       </div>
 
+      <KhatmPlanner rtl={rtl} lastRead={lastRead} />
+
       <RecitationPractice rtl={rtl} actions={actions} quranData={quranData} />
     </div>
+  );
+}
+
+function KhatmPlanner({ rtl, lastRead }) {
+  const [days, setDays] = useState(30);
+  const perDay = Math.ceil(6236 / Math.max(1, days));
+  const readSoFar = lastRead ? SURAH_OFFSETS[lastRead.surahNum - 1] + (lastRead.ayahNum || 1) : 0;
+  const pct = Math.min(100, Math.round((readSoFar / 6236) * 100));
+
+  return (
+    <Card className="p-5 mb-4">
+      <div className="flex items-center gap-2 mb-3"><BookOpen size={18} color={COLORS.green} /><h3 className="font-bold">{rtl ? "خطة ختم القرآن" : "Khatm (Reading Plan)"}</h3></div>
+      <p className="text-xs opacity-60 mb-3">{rtl ? "احسب عدد الآيات المطلوب قراءتها يوميًا لإتمام القرآن كاملاً ضمن مدة محددة." : "Work out how many ayat per day it takes to finish the whole Quran in a chosen number of days."}</p>
+      <div className="flex items-center gap-3 mb-3">
+        <label className="text-xs opacity-60 whitespace-nowrap">{rtl ? "المدة (أيام):" : "Target (days):"}</label>
+        <input type="number" min="1" value={days} onChange={(e) => setDays(Math.max(1, Number(e.target.value) || 1))} className="w-24 px-3 py-1.5 rounded-lg border text-sm outline-none" style={{ borderColor: COLORS.green + "30", background: "transparent" }} />
+      </div>
+      <div className="p-3 rounded-lg mb-3" style={{ background: COLORS.lightGreen }}>
+        <div className="text-xs opacity-60">{rtl ? "الآيات المطلوبة يوميًا" : "Ayat needed per day"}</div>
+        <div className="text-xl font-extrabold" style={{ color: COLORS.darkGreen }}>{perDay} {rtl ? "آية" : "ayat/day"}</div>
+      </div>
+      {lastRead && (
+        <>
+          <div className="flex justify-between text-xs opacity-60 mb-1"><span>{rtl ? "تقدّم القراءة (تقديري، بحسب آخر موضع فتحته)" : "Estimated progress (based on the last surah you opened)"}</span><span>{pct}%</span></div>
+          <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: COLORS.lightGreen }}>
+            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: COLORS.green }} />
+          </div>
+        </>
+      )}
+    </Card>
   );
 }
 
