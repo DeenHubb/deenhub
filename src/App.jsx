@@ -337,8 +337,10 @@ export default function DeenHub() {
   const [authOpen, setAuthOpen] = useState(false);
   const [accountMenu, setAccountMenu] = useState(false);
   const [playingId, setPlayingId] = useState(null);
+  const [isPlayingAll, setIsPlayingAll] = useState(false);
   const [reciter, setReciter] = useState("ar.alafasy");
   const audioRef = useRef(null);
+  const playAllStopRef = useRef(false);
   const rtl = lang === "ar";
 
   // Continue Reading: remembers the last surah/ayah opened, across visits.
@@ -417,6 +419,8 @@ export default function DeenHub() {
 
   const playAyah = (globalAyahNumber, id, surahNum, ayahNumInSurah) => {
     if (!audioRef.current) return;
+    playAllStopRef.current = true; // a single-ayah click always interrupts any "play all" sequence
+    setIsPlayingAll(false);
     if (playingId === id) { audioRef.current.pause(); setPlayingId(null); return; }
     const url = ayahAudioUrl(reciter, surahNum, ayahNumInSurah, globalAyahNumber);
     audioRef.current.src = url;
@@ -425,9 +429,43 @@ export default function DeenHub() {
     audioRef.current.onended = () => setPlayingId(null);
   };
 
+  // Plays every ayah of a surah back to back, starting from startIndex, chaining via onended.
+  const playAllInSurah = (surahNum, ayahs, startIndex = 0) => {
+    if (!audioRef.current || !ayahs.length) return;
+    playAllStopRef.current = false;
+    setIsPlayingAll(true);
+    const playFrom = (idx) => {
+      if (playAllStopRef.current || idx >= ayahs.length) {
+        setIsPlayingAll(false);
+        setPlayingId(null);
+        return;
+      }
+      const num = ayahs[idx][0];
+      const id = `s${surahNum}-a${num}`;
+      const globalAyahNumber = SURAH_OFFSETS[surahNum - 1] + num;
+      const url = ayahAudioUrl(reciter, surahNum, num, globalAyahNumber);
+      audioRef.current.src = url;
+      audioRef.current.play().catch(() => {
+        showToast(rtl ? "تعذر تشغيل الصوت (قد يتطلب اتصال إنترنت)" : "Couldn't play audio (may require an internet connection)");
+        setIsPlayingAll(false);
+        setPlayingId(null);
+      });
+      setPlayingId(id);
+      audioRef.current.onended = () => playFrom(idx + 1);
+    };
+    playFrom(startIndex);
+  };
+
+  const stopPlayAll = () => {
+    playAllStopRef.current = true;
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current.onended = null; }
+    setIsPlayingAll(false);
+    setPlayingId(null);
+  };
+
   const doSearch = (q) => { setSearchQuery(q); setQuery(q); setPage("search"); setMenuOpen(false); };
 
-  const actions = { showToast, copyText, shareText, isBookmarked, toggleBookmark, playAyah, playingId, reciter, setReciter, doSearch, goSurah: (n) => { setActiveSurah(n); setPage("quran"); }, setPage, setLastRead };
+  const actions = { showToast, copyText, shareText, isBookmarked, toggleBookmark, playAyah, playingId, playAllInSurah, stopPlayAll, isPlayingAll, reciter, setReciter, doSearch, goSurah: (n) => { setActiveSurah(n); setPage("quran"); }, setPage, setLastRead };
 
   const nav = [
     { id: "home", label: rtl ? "الرئيسية" : "Home" },
@@ -986,6 +1024,13 @@ function QuranPage({ rtl, theme, activeSurah, setActiveSurah, actions, quranData
               {RECITERS.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
           </div>
+          <button
+            onClick={() => (actions.isPlayingAll ? actions.stopPlayAll() : actions.playAllInSurah(activeSurah, ayahs))}
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full text-white"
+            style={{ background: COLORS.green }}
+          >
+            {actions.isPlayingAll ? <Pause size={12} /> : <Play size={12} />} {actions.isPlayingAll ? (rtl ? "إيقاف" : "Stop") : (rtl ? "تشغيل الكل" : "Play All")}
+          </button>
           <div className="flex items-center gap-1 ms-auto">
             <button onClick={() => setFontSize((f) => Math.max(18, f - 2))} className="w-7 h-7 rounded-full border text-xs font-bold" style={{ borderColor: COLORS.green + "30" }}>A-</button>
             <button onClick={() => setFontSize((f) => Math.min(44, f + 2))} className="w-7 h-7 rounded-full border text-xs font-bold" style={{ borderColor: COLORS.green + "30" }}>A+</button>
