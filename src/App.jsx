@@ -177,6 +177,28 @@ function StarPattern({ opacity = 0.06, color = COLORS.green, size = 64 }) {
   );
 }
 
+// A classic Islamic geometric motif: an 8-pointed star formed by two overlapping squares
+// (one rotated 45°), tiled in a grid with a small accent circle at each intersection.
+function IslamicPattern({ opacity = 0.1, color = COLORS.gold, size = 84 }) {
+  const id = "islamicpat";
+  const c = size / 2;
+  const r = size * 0.32;
+  return (
+    <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity }}>
+      <defs>
+        <pattern id={id} width={size} height={size} patternUnits="userSpaceOnUse">
+          <g stroke={color} strokeWidth="1.1" fill="none">
+            <rect x={c - r} y={c - r} width={r * 2} height={r * 2} />
+            <rect x={c - r} y={c - r} width={r * 2} height={r * 2} transform={`rotate(45 ${c} ${c})`} />
+            <circle cx={c} cy={c} r={r * 0.32} />
+          </g>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill={`url(#${id})`} />
+    </svg>
+  );
+}
+
 function GoldDivider() {
   return (
     <div className="flex items-center justify-center gap-2 my-10 select-none" aria-hidden="true">
@@ -689,7 +711,8 @@ function Home_({ rtl, theme, dark, query, setQuery, actions, quranData, lastRead
     <div>
       {/* HERO */}
       <section className="relative -mx-4 px-4 pt-14 md:pt-24 pb-14 text-center overflow-hidden rounded-b-[2.5rem]" style={{ background: dark ? "linear-gradient(180deg, #0d1f18, #0B1712)" : `linear-gradient(180deg, ${COLORS.lightGreen} 0%, ${COLORS.cream} 75%)` }}>
-        <StarPattern opacity={dark ? 0.05 : 0.07} color={COLORS.green} />
+        <IslamicPattern opacity={dark ? 0.09 : 0.14} color={dark ? COLORS.goldSoft : COLORS.gold} size={84} />
+        <StarPattern opacity={dark ? 0.04 : 0.05} color={COLORS.green} size={64} />
         <div className="relative">
           <div className="flex items-center justify-center gap-2 mb-6">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold" style={{ background: dark ? "rgba(199,169,90,0.15)" : "#fff", color: COLORS.gold, border: `1px solid ${COLORS.gold}55` }}>
@@ -731,6 +754,23 @@ function Home_({ rtl, theme, dark, query, setQuery, actions, quranData, lastRead
               </Card>
             )}
           </div>
+
+          <div className="flex items-center justify-center gap-6 sm:gap-10 mt-10 flex-wrap">
+            {[
+              { n: "6,236", l: rtl ? "آية" : "Verses" },
+              { n: "40+", l: rtl ? "حديث" : "Hadith" },
+              { n: "114", l: rtl ? "سورة" : "Surahs" },
+              { n: "4", l: rtl ? "مذاهب" : "Madhhabs" },
+            ].map((s, i) => (
+              <div key={i} className="flex items-center gap-6 sm:gap-10">
+                <div className="text-center">
+                  <div className="text-xl sm:text-2xl font-extrabold" style={{ color: COLORS.green, fontFamily: "'Manrope',sans-serif" }}>{s.n}</div>
+                  <div className="text-[11px] opacity-60 font-bold uppercase tracking-wide mt-0.5">{s.l}</div>
+                </div>
+                {i < 3 && <span className="h-8 w-px opacity-20" style={{ background: COLORS.gold }} />}
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -738,9 +778,9 @@ function Home_({ rtl, theme, dark, query, setQuery, actions, quranData, lastRead
       <section className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-10">
         {categories.map((c, i) => (
           <Card key={i} className="p-5 flex flex-col relative overflow-hidden group hover:-translate-y-0.5 transition-transform">
-            <div className="absolute top-0 left-0 right-0 h-1" style={{ background: `linear-gradient(90deg, ${COLORS.gold}, transparent)` }} />
-            <div className="w-11 h-11 rounded-full flex items-center justify-center mb-3" style={{ background: `radial-gradient(circle, ${COLORS.lightGreen}, transparent)`, boxShadow: `inset 0 0 0 1.5px ${COLORS.gold}66` }}>
-              <c.icon size={19} color={COLORS.green} />
+            <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: `linear-gradient(90deg, ${COLORS.gold}, ${COLORS.goldSoft}, transparent)` }} />
+            <div className="w-11 h-11 rounded-full flex items-center justify-center mb-3 shadow-sm" style={{ background: `linear-gradient(135deg, ${COLORS.green}, ${COLORS.darkGreen})`, boxShadow: `0 0 0 3px ${COLORS.gold}33` }}>
+              <c.icon size={19} color="#fff" />
             </div>
             <h3 className="font-bold text-base" style={{ color: "var(--heading)" }}>{c.title}</h3>
             <p className="text-sm opacity-70 mt-1 flex-1">{c.desc}</p>
