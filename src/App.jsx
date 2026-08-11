@@ -112,11 +112,28 @@ const SURAH_OFFSETS = (() => {
   return offsets;
 })();
 
+// Two CDNs are used depending on the reciter:
+// - "islamic-network": cdn.islamic.network, addressed by a single global ayah number (1-6236)
+// - "everyayah": everyayah.com, addressed by zero-padded surah+ayah-in-surah (e.g. 001001.mp3)
 const RECITERS = [
-  { id: "ar.alafasy", name: "Mishary Alafasy" },
-  { id: "ar.husary", name: "Mahmoud Husary" },
-  { id: "ar.minshawi", name: "Mohamed Minshawi" },
+  { id: "ar.alafasy", name: "Mishary Alafasy", source: "islamic-network" },
+  { id: "ar.husary", name: "Mahmoud Husary", source: "islamic-network" },
+  { id: "ar.minshawi", name: "Mohamed Minshawi", source: "islamic-network" },
+  { id: "ar.mahermuaiqly", name: "Maher Al Muaiqly", source: "islamic-network" },
+  { id: "ar.muhammadayyoub", name: "Muhammad Ayyoub", source: "islamic-network" },
+  { id: "Yasser_Ad-Dussary_128kbps", name: "Yasser Al-Dosari", source: "everyayah" },
+  { id: "Ali_Jaber_64kbps", name: "Ali Jaber", source: "everyayah" },
 ];
+
+function ayahAudioUrl(reciterId, surahNum, ayahNumInSurah, globalAyahNumber) {
+  const r = RECITERS.find((x) => x.id === reciterId) || RECITERS[0];
+  if (r.source === "everyayah") {
+    const ss = String(surahNum).padStart(3, "0");
+    const aa = String(ayahNumInSurah).padStart(3, "0");
+    return `https://everyayah.com/data/${r.id}/${ss}${aa}.mp3`;
+  }
+  return `https://cdn.islamic.network/quran/audio/128/${r.id}/${globalAyahNumber}.mp3`;
+}
 
 const CALC_METHODS = [
   { id: 2, name: "ISNA (North America)" },
@@ -398,10 +415,10 @@ export default function DeenHub() {
     });
   };
 
-  const playAyah = (globalAyahNumber, id) => {
+  const playAyah = (globalAyahNumber, id, surahNum, ayahNumInSurah) => {
     if (!audioRef.current) return;
     if (playingId === id) { audioRef.current.pause(); setPlayingId(null); return; }
-    const url = `https://cdn.islamic.network/quran/audio/128/${reciter}/${globalAyahNumber}.mp3`;
+    const url = ayahAudioUrl(reciter, surahNum, ayahNumInSurah, globalAyahNumber);
     audioRef.current.src = url;
     audioRef.current.play().catch(() => showToast(rtl ? "تعذر تشغيل الصوت (قد يتطلب اتصال إنترنت)" : "Couldn't play audio (may require an internet connection)"));
     setPlayingId(id);
@@ -994,7 +1011,7 @@ function QuranPage({ rtl, theme, activeSurah, setActiveSurah, actions, quranData
               <div className="flex justify-between items-center mb-3">
                 <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: COLORS.lightGreen, color: COLORS.green, border: `1px solid ${COLORS.gold}55` }}>{num}</span>
                 <div className="flex gap-3 items-center opacity-80">
-                  <IconBtn icon={playing ? Pause : Play} onClick={() => actions.playAyah(globalAyah, id)} label="Play" />
+                  <IconBtn icon={playing ? Pause : Play} onClick={() => actions.playAyah(globalAyah, id, activeSurah, num)} label="Play" />
                   <IconBtn icon={Bookmark} active={actions.isBookmarked(id)} onClick={() => actions.toggleBookmark({ id, type: "Quran", title: `${surah[1]}, Ayah ${num}`, sub: en.slice(0, 40) + "…" })} label="Bookmark" />
                   <IconBtn icon={Copy} onClick={() => actions.copyText(`${ar}\n${en}\n(${cite})`)} label="Copy" />
                   <IconBtn icon={Share2} onClick={() => actions.shareText(`${en}\n(${cite})`, cite)} label="Share" />
@@ -1872,7 +1889,7 @@ function RecitationPractice({ rtl, actions, quranData }) {
   const playReciter = () => {
     if (!globalAyah || !reciterAudioRef.current) return;
     if (playingWhich === "reciter") { reciterAudioRef.current.pause(); setPlayingWhich(null); return; }
-    reciterAudioRef.current.src = `https://cdn.islamic.network/quran/audio/128/ar.alafasy/${globalAyah}.mp3`;
+    reciterAudioRef.current.src = ayahAudioUrl(actions.reciter, surahNum, ayahNum, globalAyah);
     reciterAudioRef.current.play().catch(() => actions.showToast(rtl ? "تعذر تشغيل الصوت" : "Couldn't play audio"));
     setPlayingWhich("reciter");
     reciterAudioRef.current.onended = () => setPlayingWhich(null);
