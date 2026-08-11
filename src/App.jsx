@@ -112,9 +112,12 @@ const SURAH_OFFSETS = (() => {
   return offsets;
 })();
 
-// Two CDNs are used depending on the reciter:
+// Three sources are used depending on the reciter:
 // - "islamic-network": cdn.islamic.network, addressed by a single global ayah number (1-6236)
 // - "everyayah": everyayah.com, addressed by zero-padded surah+ayah-in-surah (e.g. 001001.mp3)
+// - "surah-only": mp3quran.net, only has full-surah files (no per-ayah audio exists for these
+//   reciters anywhere), addressed by a zero-padded surah number (e.g. 002.mp3). Coverage is
+//   partial for these two (not every surah was recorded), so playback can occasionally 404.
 const RECITERS = [
   { id: "ar.alafasy", name: "Mishary Alafasy", source: "islamic-network" },
   { id: "ar.husary", name: "Mahmoud Husary", source: "islamic-network" },
@@ -123,6 +126,8 @@ const RECITERS = [
   { id: "ar.muhammadayyoub", name: "Muhammad Ayyoub", source: "islamic-network" },
   { id: "Yasser_Ad-Dussary_128kbps", name: "Yasser Al-Dosari", source: "everyayah" },
   { id: "Ali_Jaber_64kbps", name: "Ali Jaber", source: "everyayah" },
+  { id: "hazza", name: "Hazza Al-Balushi", source: "surah-only", surahUrlBase: "https://server11.mp3quran.net/hazza/" },
+  { id: "a_binhameed", name: "Ahmad ibn Talib", source: "surah-only", surahUrlBase: "https://server16.mp3quran.net/download/a_binhameed/Rewayat-Hafs-A-n-Assem/" },
 ];
 
 function ayahAudioUrl(reciterId, surahNum, ayahNumInSurah, globalAyahNumber) {
@@ -131,6 +136,9 @@ function ayahAudioUrl(reciterId, surahNum, ayahNumInSurah, globalAyahNumber) {
     const ss = String(surahNum).padStart(3, "0");
     const aa = String(ayahNumInSurah).padStart(3, "0");
     return `https://everyayah.com/data/${r.id}/${ss}${aa}.mp3`;
+  }
+  if (r.source === "surah-only") {
+    return `${r.surahUrlBase}${String(surahNum).padStart(3, "0")}.mp3`;
   }
   return `https://cdn.islamic.network/quran/audio/128/${r.id}/${globalAyahNumber}.mp3`;
 }
@@ -422,18 +430,36 @@ export default function DeenHub() {
     playAllStopRef.current = true; // a single-ayah click always interrupts any "play all" sequence
     setIsPlayingAll(false);
     if (playingId === id) { audioRef.current.pause(); setPlayingId(null); return; }
+    const reciterInfo = RECITERS.find((r) => r.id === reciter);
+    if (reciterInfo?.source === "surah-only") {
+      showToast(rtl ? "هذا القارئ متاح بتلاوة السورة كاملة فقط — سيتم تشغيل السورة كاملة" : "This reciter only has full-surah audio — playing the whole surah");
+    }
     const url = ayahAudioUrl(reciter, surahNum, ayahNumInSurah, globalAyahNumber);
     audioRef.current.src = url;
-    audioRef.current.play().catch(() => showToast(rtl ? "تعذر تشغيل الصوت (قد يتطلب اتصال إنترنت)" : "Couldn't play audio (may require an internet connection)"));
+    audioRef.current.play().catch(() => showToast(rtl ? "تعذر تشغيل الصوت (قد يتطلب اتصال إنترنت أو غير متوفر لهذا القارئ)" : "Couldn't play audio (may require an internet connection, or isn't available for this reciter)"));
     setPlayingId(id);
     audioRef.current.onended = () => setPlayingId(null);
   };
 
   // Plays every ayah of a surah back to back, starting from startIndex, chaining via onended.
+  // For "surah-only" reciters (no per-ayah files exist), this just streams the single full-surah file.
   const playAllInSurah = (surahNum, ayahs, startIndex = 0) => {
     if (!audioRef.current || !ayahs.length) return;
     playAllStopRef.current = false;
     setIsPlayingAll(true);
+    const reciterInfo = RECITERS.find((r) => r.id === reciter);
+    if (reciterInfo?.source === "surah-only") {
+      const id = `s${surahNum}-all`;
+      audioRef.current.src = ayahAudioUrl(reciter, surahNum, 1, 0);
+      audioRef.current.play().catch(() => {
+        showToast(rtl ? "هذه السورة غير متوفرة لهذا القارئ" : "This surah isn't available for this reciter");
+        setIsPlayingAll(false);
+        setPlayingId(null);
+      });
+      setPlayingId(id);
+      audioRef.current.onended = () => { setIsPlayingAll(false); setPlayingId(null); };
+      return;
+    }
     const playFrom = (idx) => {
       if (playAllStopRef.current || idx >= ayahs.length) {
         setIsPlayingAll(false);
